@@ -32,8 +32,8 @@ async def main():
 
         # Create DIAL client
         dial_client = DialClient(
-            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
-            endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            api_key=os.getenv("DIAL_API_KEY"),
+            endpoint=os.getenv("DIAL_ENDPOINT"),
             tools=tools,
             mcp_client=mcp_client
         )

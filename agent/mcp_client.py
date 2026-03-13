@@ -34,8 +34,18 @@ class MCPClient:
         """Get available tools from MCP server"""
         if not self.session:
             raise RuntimeError("MCP client not connected. Call connect() first.")
-        tools = await self.session.list_tools()
-        return [tool.to_json() for tool in tools.tools]
+        tools_response = await self.session.list_tools()
+        tools = []
+        for tool in tools_response.tools:
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": tool.inputSchema
+                }
+            })
+        return tools
 
     async def call_tool(self, tool_name: str, tool_args: dict[str, Any]) -> Any:
         """Call a specific tool on the MCP server"""
