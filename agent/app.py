@@ -15,16 +15,63 @@ from agent.prompts import SYSTEM_PROMPT
 # Pay attention that `fetch` doesn't have resources and prompts
 
 async def main():
-    #TODO:
-    # 1. Create MCP client and open connection to the MCP server (use `async with {YOUR_MCP_CLIENT} as mcp_client`),
-    #    mcp_server_url="http://localhost:8005/mcp"
-    # 2. Get Available MCP Resources and print them
-    # 3. Get Available MCP Tools, assign to `tools` variable, print tool as well
-    # 4. Create DialClient
-    # 5. Create list with messages and add there SYSTEM_PROMPT with instructions to LLM
-    # 6. Add to messages Prompts from MCP server as User messages
-    # 7. Create console chat (infinite loop + ability to exit from chat + preserve message history after the call to dial client)
-    raise NotImplementedError()
+    async with MCPClient(mcp_server_url="http://localhost:8005/mcp") as mcp_client:
+        # Get and print available resources
+        resources = await mcp_client.get_resources()
+        print(f"📚 Available Resources:")
+        for resource in resources:
+            print(f"  - {resource.uri}: {resource.description}")
+        print()
+
+        # Get and print available tools
+        tools = await mcp_client.get_tools()
+        print(f"🔧 Available Tools:")
+        for tool in tools:
+            print(f"  - {tool['function']['name']}: {tool['function']['description']}")
+        print()
+
+        # Create DIAL client
+        dial_client = DialClient(
+            api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+            endpoint=os.getenv("AZURE_OPENAI_ENDPOINT"),
+            tools=tools,
+            mcp_client=mcp_client
+        )
+
+        # Initialize messages with system prompt
+        messages: list[Message] = [
+            Message(role="system", content=SYSTEM_PROMPT)
+        ]
+
+        # Get and add prompts from MCP server as user messages
+        prompts = await mcp_client.get_prompts()
+        print(f"📝 Available Prompts:")
+        for prompt in prompts:
+            print(f"  - {prompt.name}: {prompt.description}")
+        print()
+
+        # Add prompt content to messages
+        for prompt in prompts:
+            prompt_content = await mcp_client.get_prompt(prompt.name)
+            messages.append(Message(role="user", content=f"📌 Prompt - {prompt.name}:\n{prompt_content}"))
+
+        # Console chat loop
+        print("💬 Starting conversation with User Management Agent. Type 'exit' to quit.\n")
+        while True:
+            user_input = input("👤 You: ").strip()
+            if user_input.lower() == "exit":
+                print("Goodbye!")
+                break
+
+            # Add user message
+            messages.append(Message(role="user", content=user_input))
+
+            try:
+                # Get AI response
+                ai_response = await dial_client.get_completion(messages)
+                messages.append(ai_response)
+            except Exception as e:
+                print(f"❌ Error: {e}")
 
 
 if __name__ == "__main__":
